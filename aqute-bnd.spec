@@ -49,6 +49,7 @@ BuildRequires:  jpackage-utils
 BuildRequires:  java-devel
 BuildRequires:  ant
 BuildRequires:  locales-en
+BuildRequires:  java-rpmbuild
 
 Requires:       java
 
