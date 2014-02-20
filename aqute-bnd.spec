@@ -1,3 +1,4 @@
+%{?_javapackages_macros:%_javapackages_macros}
 # Copyright (c) 2000-2008, JPackage Project
 # All rights reserved.
 #
@@ -30,10 +31,10 @@
 
 Name:           aqute-bnd
 Version:        0.0.363
-Release:        6
+Release:        8.0%{?dist}
 Summary:        BND Tool
 License:        ASL 2.0
-Group:          Development/Java
+
 URL:            http://www.aQute.biz/Code/Bnd
 
 # NOTE : sources for 0.0.363 are no longer available
@@ -42,14 +43,13 @@ URL:            http://www.aQute.biz/Code/Bnd
 Source0:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.jar
 Source1:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.pom
 Source2:        aqute-service.tar.gz
+Patch0:         %{name}-ftbfs.patch
 
 BuildArch:      noarch
 
 BuildRequires:  jpackage-utils
 BuildRequires:  java-devel
 BuildRequires:  ant
-BuildRequires:  locales-en
-BuildRequires:  java-rpmbuild
 
 Requires:       java
 
@@ -66,27 +66,13 @@ The tool is capable of acting as:
 - Directives
 - Use of macros
 
-%files
-%doc LICENSE
-%{_javadir}/%{name}.jar
-%{_mavenpomdir}/JPP-%{name}.pom
-%{_mavendepmapfragdir}/%{name}
-
-#--------------------------------------------------------------------
-
 %package javadoc
 Requires:       jpackage-utils
 Summary:        Javadoc for %{name}
-Group:          Development/Java
+
 
 %description javadoc
 Javadoc for %{name}.
-
-%files javadoc
-%doc LICENSE
-%{_javadocdir}/%{name}
-
-#--------------------------------------------------------------------
 
 %prep
 %setup -q -c
@@ -115,13 +101,15 @@ done
 # Convert CR+LF to LF
 sed -i "s|\r||g" LICENSE
 
+%patch0 -p1
+
 %build
-export LANG=en_US.utf8
+export LC_ALL=en_US.UTF-8
 export OPT_JAR_LIST=:
 export CLASSPATH=$(build-classpath ant)
 
-%{javac} -encoding UTF-8 -d target/classes -target 1.5 -source 1.5 $(find src/main/java -type f -name "*.java")
-%{javadoc} -encoding UTF-8 -d target/site/apidocs -sourcepath src/main/java aQute.lib.header aQute.lib.osgi aQute.lib.qtokens aQute.lib.filter
+%{javac} -d target/classes -target 1.5 -source 1.5 $(find src/main/java -type f -name "*.java")
+%{javadoc} -d target/site/apidocs -sourcepath src/main/java aQute.lib.header aQute.lib.osgi aQute.lib.qtokens aQute.lib.filter
 cp -p LICENSE maven-dependencies.txt plugin.xml pom.xml target/classes
 for f in $(find aQute/ -type f -not -name "*.class"); do
     cp -p $f target/classes/$f
@@ -141,4 +129,40 @@ install -Dm 644 %{SOURCE1} %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
 install -d -m 755 %{buildroot}%{_javadocdir}/%{name}
 cp -pr target/site/apidocs/* %{buildroot}%{_javadocdir}/%{name}
 
-%add_to_maven_depmap JPP-%{name}.pom %{name}.jar
+%add_maven_depmap JPP-%{name}.pom %{name}.jar
+
+%files
+%doc LICENSE
+%{_javadir}/%{name}.jar
+%{_mavenpomdir}/JPP-%{name}.pom
+%{_mavendepmapfragdir}/%{name}
+
+%files javadoc
+%doc LICENSE
+%{_javadocdir}/%{name}
+
+%changelog
+* Wed Feb 13 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
+* Wed Jul 18 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-7
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
+
+* Wed Apr 25 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 0.0.363-6
+- Get rid of unusable eclipse plugins to simplify dependencies
+
+* Fri Mar 02 2012 Jaromir Capik <jcapik@redhat.com> - 0.0.363-5
+- Fixing build failures on f16 and later
+
+* Thu Jan 12 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
+* Thu Sep 22 2011 Jaromir Capik <jcapik@redhat.com> - 0.0.363-3
+- Resurrection of bundled non-class files
+
+* Thu Sep 22 2011 Jaromir Capik <jcapik@redhat.com> - 0.0.363-2
+- Bundled classes removed
+- jpackage-utils dependency added to the javadoc subpackage
+
+* Wed Sep 21 2011 Jaromir Capik <jcapik@redhat.com> - 0.0.363-1
+- Initial version (cloned from aqute-bndlib 0.0.363)
