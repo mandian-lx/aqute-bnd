@@ -31,7 +31,7 @@
 
 Name:           aqute-bnd
 Version:        0.0.363
-Release:        8.0%{?dist}
+Release:        9.0%{?dist}
 Summary:        BND Tool
 License:        ASL 2.0
 
@@ -44,6 +44,7 @@ Source0:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version
 Source1:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.pom
 Source2:        aqute-service.tar.gz
 Patch0:         %{name}-ftbfs.patch
+Patch1:		aqute-bnd-0.0.363-ambiguous-base64.patch
 
 BuildArch:      noarch
 
@@ -82,7 +83,7 @@ mkdir -p target/classes/
 mkdir -p src/main/
 mv OSGI-OPT/src src/main/java
 pushd src/main/java
-tar xfs %{SOURCE2}
+tar xf %{SOURCE2}
 popd
 sed -i "s|import aQute.lib.filter.*;||g" src/main/java/aQute/bnd/make/ComponentDef.java
 sed -i "s|import aQute.lib.filter.*;||g" src/main/java/aQute/bnd/make/ServiceComponent.java
@@ -102,6 +103,7 @@ done
 sed -i "s|\r||g" LICENSE
 
 %patch0 -p1
+%patch1 -p1
 
 %build
 export LC_ALL=en_US.UTF-8
