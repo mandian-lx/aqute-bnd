@@ -31,10 +31,10 @@
 
 Name:           aqute-bnd
 Version:        0.0.363
-Release:        9.0%{?dist}
+Release:        14.1
+Group:		Development/Java
 Summary:        BND Tool
 License:        ASL 2.0
-
 URL:            http://www.aQute.biz/Code/Bnd
 
 # NOTE : sources for 0.0.363 are no longer available
@@ -43,16 +43,23 @@ URL:            http://www.aQute.biz/Code/Bnd
 Source0:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.jar
 Source1:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.pom
 Source2:        aqute-service.tar.gz
-Patch0:         %{name}-ftbfs.patch
-Patch1:		aqute-bnd-0.0.363-ambiguous-base64.patch
+
+# from Debian, add source compatibility with ant 1.9
+Patch0:         %{name}-%{version}-ant19.patch
+# fixing base64 class ambiguity
+Patch1:         %{name}-%{version}-ambiguous-base64.patch
+
 
 BuildArch:      noarch
 
 BuildRequires:  jpackage-utils
 BuildRequires:  java-devel
 BuildRequires:  ant
+BuildRequires:  felix-osgi-compendium
+BuildRequires:  felix-osgi-core
+BuildRequires:  junit
 
-Requires:       java
+Requires:       java-headless
 
 %description
 The bnd tool helps you create and diagnose OSGi R4 bundles.
@@ -68,9 +75,7 @@ The tool is capable of acting as:
 - Use of macros
 
 %package javadoc
-Requires:       jpackage-utils
 Summary:        Javadoc for %{name}
-
 
 %description javadoc
 Javadoc for %{name}.
@@ -95,18 +100,39 @@ rm -rf src/main/java/aQute/bnd/annotation/Test.java \
        aQute/bnd/classpath/messages.properties
 
 # remove bundled stuff
-for f in $(find aQute/ -type f -name "*.class"); do
-    rm -f $f
-done
+find aQute/ -type f -name "*.class" -delete
+
+%patch0 -p1 -b .ant19
+%patch1 -p1 -b .base64
 
 # Convert CR+LF to LF
 sed -i "s|\r||g" LICENSE
-
-%patch0 -p1
-%patch1 -p1
+mkdir temp
+(
+cd temp
+mkdir -p target/classes/
+mkdir -p src/main/
+%jar -xf ../aQute/bnd/test/aQute.runtime.jar
+mv OSGI-OPT/src src/main/java
+find aQute -type f -name "*.class" -delete
+)
+rm -rf aQute/bnd/test/aQute.runtime.jar
 
 %build
 export LC_ALL=en_US.UTF-8
+
+(
+cd temp
+%{javac} -d target/classes -target 1.5 -source 1.5 -classpath $(build-classpath junit felix/org.osgi.core felix/org.osgi.compendium) $(find src/main/java -type f -name "*.java")
+for f in $(find aQute/ -type f -not -name "*.class"); do
+    cp -p $f target/classes/$f
+done
+  (
+   cd target/classes
+   %jar cmf ../../META-INF/MANIFEST.MF ../../../aQute/bnd/test/aQute.runtime.jar *
+  )
+)
+rm -r temp
 export OPT_JAR_LIST=:
 export CLASSPATH=$(build-classpath ant)
 
@@ -131,19 +157,37 @@ install -Dm 644 %{SOURCE1} %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
 install -d -m 755 %{buildroot}%{_javadocdir}/%{name}
 cp -pr target/site/apidocs/* %{buildroot}%{_javadocdir}/%{name}
 
-%add_maven_depmap JPP-%{name}.pom %{name}.jar
+%add_maven_depmap
 
-%files
+%files -f .mfiles
 %doc LICENSE
-%{_javadir}/%{name}.jar
-%{_mavenpomdir}/JPP-%{name}.pom
-%{_mavendepmapfragdir}/%{name}
 
 %files javadoc
 %doc LICENSE
 %{_javadocdir}/%{name}
 
 %changelog
+* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-14
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Thu May 29 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.0.363-13
+- Use .mfiles generated during build
+
+* Fri May 09 2014 Jaromir Capik <jcapik@redhat.com> - 0.0.363-12
+- Fixing ambiguous base64 class
+
+* Fri May 09 2014 Gil Cattaneo <puntogil@libero.it> 0.0.363-11
+- fix rhbz#991985
+- add source compatibility with ant 1.9
+- remove and rebuild from source aQute.runtime.jar
+- update to current packaging guidelines
+
+* Tue Mar 04 2014 Stanislav Ochotnicky <sochotnicky@redhat.com> - 0.0.363-10
+- Use Requires: java-headless rebuild (#1067528)
+
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-9
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
 * Wed Feb 13 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-8
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
@@ -168,3 +212,4 @@ cp -pr target/site/apidocs/* %{buildroot}%{_javadocdir}/%{name}
 
 * Wed Sep 21 2011 Jaromir Capik <jcapik@redhat.com> - 0.0.363-1
 - Initial version (cloned from aqute-bndlib 0.0.363)
+
