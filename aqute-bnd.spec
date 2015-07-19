@@ -31,7 +31,7 @@
 
 Name:           aqute-bnd
 Version:        0.0.363
-Release:        14.1
+Release:        14.2
 Group:		Development/Java
 Summary:        BND Tool
 License:        ASL 2.0
