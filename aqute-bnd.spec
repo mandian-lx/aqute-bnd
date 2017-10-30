@@ -1,68 +1,56 @@
 %{?_javapackages_macros:%_javapackages_macros}
-# Copyright (c) 2000-2008, JPackage Project
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-# 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the
-#    distribution.
-# 3. Neither the name of the JPackage Project nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
+%bcond_without ant_tasks
+%if 0%{?fedora} || 0%{?rhel} > 7
+%bcond_without maven_plugin
+%endif
 
 Name:           aqute-bnd
-Version:        0.0.363
-Release:        14.2
-Group:		Development/Java
+Version:        3.5.0
+Release:        1.1
 Summary:        BND Tool
 License:        ASL 2.0
-URL:            http://www.aQute.biz/Code/Bnd
-
-# NOTE : sources for 0.0.363 are no longer available
-# The following links would work for 0.0.370-0.0.401 version range, but
-# we need to stay by 0.0.363 to minimize problems during the 1.43.0 introduction
-Source0:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.jar
-Source1:        http://www.aqute.biz/repo/biz/aQute/bnd/%{version}/bnd-%{version}.pom
-Source2:        aqute-service.tar.gz
-
-# from Debian, add source compatibility with ant 1.9
-Patch0:         %{name}-%{version}-ant19.patch
-# fixing base64 class ambiguity
-Patch1:         %{name}-%{version}-ambiguous-base64.patch
-
-
+URL:            http://bnd.bndtools.org/
 BuildArch:      noarch
 
-BuildRequires:  jpackage-utils
-BuildRequires:  java-devel
-BuildRequires:  ant
-BuildRequires:  felix-osgi-compendium
-BuildRequires:  felix-osgi-core
-BuildRequires:  junit
+Source0:        %{version}.REL.tar.gz
+# removes bundled jars from upstream tarball
+# run as:
+# ./repack-tarball.sh
+Source1:        repack-tarball.sh
 
-Requires:       java-headless
+Source2:        parent.pom
+Source3:        https://repo1.maven.org/maven2/biz/aQute/bnd/aQute.libg/%{version}/aQute.libg-%{version}.pom
+Source4:        https://repo1.maven.org/maven2/biz/aQute/bnd/biz.aQute.bnd/%{version}/biz.aQute.bnd-%{version}.pom
+Source5:        https://repo1.maven.org/maven2/biz/aQute/bnd/biz.aQute.bndlib/%{version}/biz.aQute.bndlib-%{version}.pom
+Source6:        https://repo1.maven.org/maven2/biz/aQute/bnd/biz.aQute.bnd.annotation/%{version}/biz.aQute.bnd.annotation-%{version}.pom
+
+Patch0:         0001-Disable-removed-commands.patch
+Patch1:         0002-Fix-ant-compatibility.patch
+
+BuildRequires:  maven-local
+BuildRequires:  mvn(org.osgi:osgi.annotation)
+BuildRequires:  mvn(org.osgi:osgi.cmpn)
+BuildRequires:  mvn(org.osgi:osgi.core)
+BuildRequires:  mvn(org.slf4j:slf4j-api)
+BuildRequires:  mvn(org.slf4j:slf4j-simple)
+%if %{with ant_tasks}
+BuildRequires:  mvn(org.apache.ant:ant)
+%endif
+%if %{with maven_plugin}
+BuildRequires:  mvn(junit:junit)
+BuildRequires:  mvn(org.apache.maven:maven-artifact)
+BuildRequires:  mvn(org.apache.maven:maven-compat)
+BuildRequires:  mvn(org.apache.maven:maven-core)
+BuildRequires:  mvn(org.apache.maven:maven-plugin-api)
+BuildRequires:  mvn(org.apache.maven.plugins:maven-plugin-plugin)
+BuildRequires:  mvn(org.apache.maven.plugins:maven-source-plugin)
+BuildRequires:  mvn(org.apache.maven.plugin-tools:maven-plugin-annotations)
+BuildRequires:  mvn(org.eclipse.aether:aether-api)
+BuildRequires:  mvn(org.sonatype.plexus:plexus-build-api)
+%endif
 
 %description
-The bnd tool helps you create and diagnose OSGi R4 bundles.
+The bnd tool helps you create and diagnose OSGi bundles.
 The key functions are:
 - Show the manifest and JAR contents of a bundle
 - Wrap a JAR so that it becomes a bundle
@@ -74,99 +62,221 @@ The tool is capable of acting as:
 - Directives
 - Use of macros
 
+%package -n aqute-bndlib
+Summary:        BND library
+
+%description -n aqute-bndlib
+%{summary}.
+
+%if %{with maven_plugin}
+%package -n bnd-maven-plugin
+Summary:        BND Maven plugin
+
+%description -n bnd-maven-plugin
+%{summary}.
+%endif
+
 %package javadoc
 Summary:        Javadoc for %{name}
 
 %description javadoc
-Javadoc for %{name}.
+API documentation for %{name}.
 
 %prep
-%setup -q -c
+%setup -q -n bnd-%{version}.REL
 
-mkdir -p target/site/apidocs/
-mkdir -p target/classes/
-mkdir -p src/main/
-mv OSGI-OPT/src src/main/java
-pushd src/main/java
-tar xf %{SOURCE2}
+rm gradlew*
+
+%patch0 -p1
+%patch1 -p1
+
+# the commands pull in more dependencies than we want (felix-resolver, jetty)
+rm biz.aQute.bnd/src/aQute/bnd/main/{RemoteCommand,ResolveCommand}.java
+
+sed 's/@VERSION@/%{version}/' %SOURCE2 > pom.xml
+sed -i 's|${Bundle-Version}|%{version}|' biz.aQute.bndlib/src/aQute/bnd/osgi/bnd.info
+
+%if %{without ant_tasks}
+rm -rf biz.aQute.bnd/src/aQute/bnd/ant
+%endif
+
+%if %{without maven_plugin}
+%pom_disable_module maven
+%endif
+
+# libg
+pushd aQute.libg
+cp -p %{SOURCE3} pom.xml
+%pom_add_parent biz.aQute.bnd:parent:%{version}
+%pom_add_dep org.osgi:osgi.cmpn
+%pom_add_dep org.slf4j:slf4j-api
 popd
-sed -i "s|import aQute.lib.filter.*;||g" src/main/java/aQute/bnd/make/ComponentDef.java
-sed -i "s|import aQute.lib.filter.*;||g" src/main/java/aQute/bnd/make/ServiceComponent.java
 
-# get rid of eclipse plugins which are not usable anyway and complicate
-# things
-rm -rf src/main/java/aQute/bnd/annotation/Test.java \
-       src/main/java/aQute/bnd/{classpath,jareditor,junit,launch,plugin} \
-       aQute/bnd/classpath/messages.properties
+# bndlib.annotations
+pushd biz.aQute.bnd.annotation
+cp -p %{SOURCE6} pom.xml
+%pom_add_parent biz.aQute.bnd:parent:%{version}
+popd
 
-# remove bundled stuff
-find aQute/ -type f -name "*.class" -delete
+# bndlib
+pushd biz.aQute.bndlib
+cp -p %{SOURCE5} pom.xml
+%pom_add_parent biz.aQute.bnd:parent:%{version}
 
-%patch0 -p1 -b .ant19
-%patch1 -p1 -b .base64
+%pom_add_dep org.osgi:osgi.annotation
+%pom_add_dep org.osgi:osgi.core
+%pom_add_dep org.osgi:osgi.cmpn
+%pom_add_dep org.slf4j:slf4j-api
+%pom_add_dep biz.aQute.bnd:aQute.libg:%{version}
+%pom_add_dep biz.aQute.bnd:biz.aQute.bnd.annotation:%{version}
+popd
 
-# Convert CR+LF to LF
-sed -i "s|\r||g" LICENSE
-mkdir temp
-(
-cd temp
-mkdir -p target/classes/
-mkdir -p src/main/
-%jar -xf ../aQute/bnd/test/aQute.runtime.jar
-mv OSGI-OPT/src src/main/java
-find aQute -type f -name "*.class" -delete
-)
-rm -rf aQute/bnd/test/aQute.runtime.jar
+# bnd
+pushd biz.aQute.bnd
+cp -p %{SOURCE4} pom.xml
+%pom_add_parent biz.aQute.bnd:parent:%{version}
+
+%pom_add_dep biz.aQute.bnd:biz.aQute.bndlib:%{version}
+%pom_add_dep biz.aQute.bnd:aQute.libg:%{version}
+%pom_add_dep biz.aQute.bnd:biz.aQute.bnd.annotation:%{version}
+%if %{with ant_tasks}
+%pom_add_dep org.apache.ant:ant
+%endif
+%pom_add_dep org.osgi:osgi.annotation
+%pom_add_dep org.osgi:osgi.core
+%pom_add_dep org.osgi:osgi.cmpn
+%pom_add_dep org.slf4j:slf4j-api
+
+%pom_add_dep org.slf4j:slf4j-simple::runtime
+popd
+
+# maven-plugins
+pushd maven
+rm bnd-shared-maven-lib/src/main/java/aQute/bnd/maven/lib/resolve/DependencyResolver.java
+%pom_remove_dep -r :biz.aQute.resolve
+%pom_remove_dep -r :biz.aQute.repository
+# Unavailable reactor dependency - org.osgi.impl.bundle.repoindex.cli
+%pom_disable_module bnd-indexer-maven-plugin
+# Requires unbuilt parts of bnd
+%pom_disable_module bnd-export-maven-plugin
+%pom_disable_module bnd-resolver-maven-plugin
+%pom_disable_module bnd-testing-maven-plugin
+# Integration tests require Internet access
+%pom_remove_plugin -r :maven-invoker-plugin
+%pom_remove_plugin -r :maven-javadoc-plugin
+
+%pom_remove_plugin -r :flatten-maven-plugin
+popd
+
+
+%mvn_alias biz.aQute.bnd:biz.aQute.bnd :bnd biz.aQute:bnd
+%mvn_alias biz.aQute.bnd:biz.aQute.bndlib :bndlib biz.aQute:bndlib
+
+%mvn_package biz.aQute.bnd:biz.aQute.bndlib bndlib
+%mvn_package biz.aQute.bnd:biz.aQute.bnd.annotation bndlib
+%mvn_package biz.aQute.bnd:aQute.libg bndlib
+%mvn_package biz.aQute.bnd:bnd-shared-maven-lib maven
+%mvn_package biz.aQute.bnd:bnd-maven-plugin maven
+%mvn_package biz.aQute.bnd:bnd-baseline-maven-plugin maven
+%mvn_package biz.aQute.bnd:parent __noinstall
+%mvn_package biz.aQute.bnd:bnd-plugin-parent __noinstall
 
 %build
-export LC_ALL=en_US.UTF-8
-
-(
-cd temp
-%{javac} -d target/classes -target 1.5 -source 1.5 -classpath $(build-classpath junit felix/org.osgi.core felix/org.osgi.compendium) $(find src/main/java -type f -name "*.java")
-for f in $(find aQute/ -type f -not -name "*.class"); do
-    cp -p $f target/classes/$f
-done
-  (
-   cd target/classes
-   %jar cmf ../../META-INF/MANIFEST.MF ../../../aQute/bnd/test/aQute.runtime.jar *
-  )
-)
-rm -r temp
-export OPT_JAR_LIST=:
-export CLASSPATH=$(build-classpath ant)
-
-%{javac} -d target/classes -target 1.5 -source 1.5 $(find src/main/java -type f -name "*.java")
-%{javadoc} -d target/site/apidocs -sourcepath src/main/java aQute.lib.header aQute.lib.osgi aQute.lib.qtokens aQute.lib.filter
-cp -p LICENSE maven-dependencies.txt plugin.xml pom.xml target/classes
-for f in $(find aQute/ -type f -not -name "*.class"); do
-    cp -p $f target/classes/$f
-done
-pushd target/classes
-%{jar} cmf ../../META-INF/MANIFEST.MF ../%{name}-%{version}.jar *
-popd
+%mvn_build -- -Dproject.build.sourceEncoding=UTF-8
 
 %install
-# jars
-install -Dpm 644 target/%{name}-%{version}.jar %{buildroot}%{_javadir}/%{name}.jar
+%mvn_install
 
-# pom
-install -Dm 644 %{SOURCE1} %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
+%if %{with ant_tasks}
+install -d -m 755 %{buildroot}%{_sysconfdir}/ant.d
+echo "aqute-bnd slf4j/api slf4j/simple osgi-annotation osgi-core osgi-compendium" >%{buildroot}%{_sysconfdir}/ant.d/%{name}
+%endif
 
-# javadoc
-install -d -m 755 %{buildroot}%{_javadocdir}/%{name}
-cp -pr target/site/apidocs/* %{buildroot}%{_javadocdir}/%{name}
-
-%add_maven_depmap
+%jpackage_script aQute.bnd.main.bnd "" "" aqute-bnd:slf4j/slf4j-api:slf4j/slf4j-simple:osgi-annotation:osgi-core:osgi-compendium bnd 1
 
 %files -f .mfiles
 %doc LICENSE
+%{_bindir}/bnd
+%if %{with ant_tasks}
+%config(noreplace) %{_sysconfdir}/ant.d/*
+%endif
 
-%files javadoc
+%files -n aqute-bndlib -f .mfiles-bndlib
 %doc LICENSE
-%{_javadocdir}/%{name}
+
+%if %{with maven_plugin}
+%files -n bnd-maven-plugin -f .mfiles-maven
+%endif
+
+%files javadoc -f .mfiles-javadoc
+%doc LICENSE
 
 %changelog
+* Fri Oct 13 2017 Michael Simacek <msimacek@redhat.com> - 3.5.0-1
+- Update to upstream version 3.5.0
+
+* Mon Oct 02 2017 Troy Dawson <tdawson@redhat.com> - 3.4.0-3
+- Cleanup spec file conditionals
+
+* Sat Sep 23 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.4.0-2
+- Remove unneeded javadoc plugin
+
+* Tue Sep 12 2017 Michael Simacek <msimacek@redhat.com> - 3.4.0-1
+- Update to upstream version 3.4.0
+
+* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 3.3.0-7
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
+
+* Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 3.3.0-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
+
+* Mon Oct 10 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.3.0-5
+- Don't use legacy Ant artifact coordinates
+
+* Mon Oct 10 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.3.0-4
+- Allow conditional builds without Ant tasks
+
+* Mon Oct 10 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.3.0-3
+- Allow conditional builds without Maven plugin
+
+* Thu Oct 06 2016 Michael Simacek <msimacek@redhat.com> - 3.3.0-2
+- Fix ant.d classpath
+
+* Thu Sep 29 2016 Michael Simacek <msimacek@redhat.com> - 3.3.0-1
+- Update to upstream version 3.3.0
+- Build against osgi-{core,compendium}
+
+* Tue Sep 27 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.2.0-5
+- Add felix-scr-annotations to classpath
+
+* Mon Sep 26 2016 Michael Simacek <msimacek@redhat.com> - 3.2.0-4
+- Use felix-annotations
+
+* Wed Sep 14 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.2.0-3
+- Build and install Maven plugins
+- Resolves: rhbz#1375904
+
+* Wed Jun  1 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.2.0-2
+- Install ant.d config files
+
+* Tue May 24 2016 Michael Simacek <msimacek@redhat.com> - 3.2.0-1
+- Update to upstream version 3.2.0
+
+* Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 2.4.1-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Fri Jul 17 2015 Michael Simacek <msimacek@redhat.com> - 2.4.1-2
+- Fix Tool header generation
+
+* Wed Jul 08 2015 Michael Simacek <msimacek@redhat.com> - 2.4.1-1
+- Update to upstream version 2.4.1
+
+* Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-16
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
+* Thu May 14 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.0.363-15
+- Disable javadoc doclint
+
 * Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.363-14
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
 
@@ -212,4 +322,3 @@ cp -pr target/site/apidocs/* %{buildroot}%{_javadocdir}/%{name}
 
 * Wed Sep 21 2011 Jaromir Capik <jcapik@redhat.com> - 0.0.363-1
 - Initial version (cloned from aqute-bndlib 0.0.363)
-

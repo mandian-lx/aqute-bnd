@@ -1,3 +1,9 @@
 sources:
+  3.5.0.REL.tar.gz: 3022433101e6246b2ddce69ddd7c3153b41462cf
+  aQute.libg-3.5.0.pom: 7f86700f3646d6ebd43bf3513aeadca86a24d89e
   aqute-service.tar.gz: 5c4383f04742004abb57567860f6e9eace1660e8
+  biz.aQute.bnd-3.5.0.pom: 8ee103be2b28b1050dadb32d2e4d9497eb9e2d01
+  biz.aQute.bnd.annotation-3.5.0.pom: 270fbede7fc52e2d4750853b7b7a185184356507
+  biz.aQute.bndlib-3.5.0.pom: 9e33fa0d396c04fd59a0b0977183d1209e86e9c7
   bnd-0.0.363.jar: 444f5784d5eab94a3d86dcaf42191e1d42eb544c
+  parent.pom: bfb6013b422e6f2b8e9fb82652921930f55d0a89
